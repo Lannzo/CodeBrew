@@ -2,7 +2,11 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const db = require('./config/db'); // Import the database configuration
+
+//import routers
+const authRoutes = require('./routes/authRoutes');
 
 dotenv.config();
 const app = express();
@@ -13,6 +17,8 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 // Parse JSON bodies
 app.use(express.json());
+app.use(cookieParser());
+
 
 db.query('SELECT NOW()', (err, res) => {
     if (err) {
@@ -26,6 +32,8 @@ db.query('SELECT NOW()', (err, res) => {
 app.get('/api/v1', (req, res) => {
     res.json({ message: 'Welcome to coffee and bread shop API!' });
 });
+
+app.use('/api/v1/auth', authRoutes);
 
 // Start the server
 app.listen(PORT, () => {
