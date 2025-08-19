@@ -58,4 +58,55 @@ exports.login = async (req, res) => {
     }
 
 
-}
+};
+
+exports.refreshToken = (req, res) => {
+    //get the refresh token from cookies
+    const refreshToken = req.cookies.refreshToken;
+
+    // if no token, the user is not authorized
+    if (refreshToken == null) {
+        return res.status(401).json({ message: 'Unauthorized, Refresh token is required' });
+    }
+
+    //verify the refresh token
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, async (err, userPayload) => {
+        if (err) {
+            return res.status(403).json({ message: 'Forbidden, Invalid refresh token' });
+        }
+
+        try {
+            const userResult = await db.query('SELECT user_id, role_id FROM users WHERE user_id = $1 AND is_active = TRUE', [userPayload.userId]);
+            if (userResult.rows.length === 0) {
+                return res.status(403).json({ message: 'User not found' });
+            }
+
+            const roleResult = await db.query('SELECT role_name FROM roles WHERE role_id = $1', [userResult.rows[0].role_id]);
+            if(roleResult.rows.length === 0){
+                return res.status(403).json({ message: 'Role not found' });
+            }
+            const userRole = roleResult.rows[0].role_name;
+
+            const newAccessToken = jwt.sign({
+                userId: userPayload.userId, role: userRole }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '15m' }
+            );
+
+            res.json({ accessToken: newAccessToken });
+
+        } catch(error){
+            console.error('Error refreshing token:', error);
+            res.status(500).json({ message: 'Internal server error' });
+        }
+    });
+};
+
+
+exports.logout = (req, res) => {
+    //clear the refresh token
+    res.cookie('refreshToken', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict', expires: new Date(0) });
+    res.status(200).json({ message: 'Logged out successfully' });
+};
+
+
+
+
