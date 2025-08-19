@@ -184,3 +184,41 @@ exports.updateUser = async (req, res) => {
         res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 };
+
+exports.deactivateUser = async (req, res) => {
+    //check for validation
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const { userId } = req.params;
+
+        //prevent the admin from deactivating their own account
+
+        if(req.user.user_id === userId) {
+            return res.status(403).json({ message: 'You cannot deactivate your own account' });
+        }
+
+        //update the users is active to false
+        const deactivateUserQuery = `
+            UPDATE users
+            SET is_active = false, updated_at = NOW()
+            WHERE user_id = $1
+            RETURNING user_id, username, is_active, updated_at;
+        `;
+        const result = await db.query(deactivateUserQuery, [userId]);
+
+        // check if the user was found and deactivated
+        if(result.rowCount === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({ message: 'User deactivated successfully', user: result.rows[0] });
+
+    }catch (error){
+        console.error('Error deactivating user:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+};

@@ -31,5 +31,6 @@ router.get('/', userController.getAllUsers);
 router.post('/', validateUserCreation, userController.createUser);
 router.get('/:userId', param('userId').isUUID().withMessage('Valid user ID(UUID) is required'), userController.getUserById);
 router.put('/:userId', validateUserUpdate, userController.updateUser);
+router.delete('/:userId', param('userId').isUUID().withMessage('Valid user ID(UUID) is required'), userController.deactivateUser);
 
 module.exports = router;
