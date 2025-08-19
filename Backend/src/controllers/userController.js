@@ -72,3 +72,115 @@ exports.createUser = async (req,res)=>{
         res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 };
+
+exports.getUserById = async (req, res) => {
+    //validation errors
+    const errors = validationResult(req);
+    if(!errors.isEmpty()){
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const { userId } = req.params; //get user id from the URL param
+
+        const userQuery = `
+            SELECT 
+            u.user_id, 
+            u.username, 
+            u.email, 
+            u.first_name, 
+            u.last_name, 
+            u.is_active, 
+            r.role_name,
+            b.branch_name
+        FROM 
+            users u
+        JOIN 
+            roles r ON u.role_id = r.role_id
+        LEFT JOIN
+            branches b ON u.branch_id = b.branch_id
+        WHERE 
+            u.user_id = $1;
+        `;
+    
+        const {rows} = await db.query(userQuery, [userId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        //return the user found data
+        res.status(200).json(rows[0]);
+
+    } catch (error) {
+        console.error("Error fetching user by ID:", error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+};
+
+exports.updateUser = async (req, res) => {
+    //check for validation errors
+    const errors = validationResult(req);
+
+    if(!errors.isEmpty()){
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try{
+        const {userId} = req.params;
+        const { username, email, first_name, last_name, role_id, branch_id, is_active } = req.body;
+
+        //fetch the existing user
+        const existingUser = await db.query('SELECT * FROM users WHERE user_id = $1', [userId]);
+        if (existingUser.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const fields = [];
+        const values = [];
+        let queryIndex = 1;
+        
+        if (username !== undefined) { fields.push(`username = $${queryIndex++}`); values.push(username); }
+        if (email !== undefined) { fields.push(`email = $${queryIndex++}`); values.push(email); }
+        if (first_name !== undefined) { fields.push(`first_name = $${queryIndex++}`); values.push(first_name); }
+        if (last_name !== undefined) { fields.push(`last_name = $${queryIndex++}`); values.push(last_name); }
+        if (role_id !== undefined) { fields.push(`role_id = $${queryIndex++}`); values.push(role_id); }
+        if (branch_id !== undefined) { fields.push(`branch_id = $${queryIndex++}`); values.push(branch_id); }
+        if (is_active !== undefined) { fields.push(`is_active = $${queryIndex++}`); values.push(is_active); }
+
+        //special handling for password
+
+        const newPassword = req.body.password;
+
+        if (newPassword) {
+            const salt = await bcrypt.genSalt(10);
+            const passwordHash = await bcrypt.hash(newPassword, salt);
+            fields.push(`password_hash = $${queryIndex++}`);
+            values.push(passwordHash);
+        }
+
+        if (fields.length === 0) {
+            return res.status(400).json({ message: 'No fields to update' });
+        }
+
+        values.push(userId); // Add userId to the end of the values array
+
+        const updateUserQuery = `
+            UPDATE users
+            SET ${fields.join(", ")}, updated_at = NOW()
+            WHERE user_id = $${queryIndex}
+            RETURNING user_id, username, email, updated_at;
+        `;
+
+        const updatedUser = await db.query(updateUserQuery, values);
+
+        res.status(200).json(updatedUser.rows[0]);
+
+    }catch(error){
+        console.error('Error updating users:', error);
+        if (error.code === '23505') {
+            return res.status(400).json({ message: 'Username or email already exists' });
+        }
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+};
