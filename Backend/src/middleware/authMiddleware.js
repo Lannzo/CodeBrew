@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const db =  require('../config/db');
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -28,4 +29,41 @@ const authorizeRole = (requiredRole) => {
   };
 };
 
-module.exports = { authenticateToken, authorizeRole };
+//Can be deleted since its not used
+const blockCashier = (req, res, next) => {
+  if (req.user && req.user.role === 'Cashier') {
+    return res.status(403).json({ message: 'Access Denied: Cashiers are not allowed to perform this action.' });
+  }
+  next();
+};
+
+const authorizeAdminOrBranchOfficerForBranch = async (req, res, next) => {
+  const {role,userId} = req.user;
+  const branchId = req.params.branchId;
+
+  if (role ==='Admin'){
+    return next();
+  }
+
+  if (role === 'Branch Officer') {
+    try {
+      const userBranchQuery = 'SELECT branch_id FROM users WHERE user_id = $1';
+      const { rows } = await db.query(userBranchQuery, [userId]);
+
+      if (rows.length > 0 && rows[0].branch_id === branchId) {
+        return next();
+
+      } else {
+        return res.status(403).json({ message: 'Access Denied: You are not authorized to manage this branch.' });
+      }
+
+    } catch (error) {
+      console.error('Authorization check failed:', error);
+      return res.status(500).json({ message: 'Internal server error during authorization check.' });
+    }
+  }
+
+  res.status(403).json({ message: 'Access Denied: You do not have permission to perform this action.' });
+}
+
+module.exports = { authenticateToken, authorizeRole, blockCashier, authorizeAdminOrBranchOfficerForBranch };
