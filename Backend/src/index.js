@@ -10,6 +10,7 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const branchRoutes = require('./routes/branchRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const productRoutes = require('./routes/productRoutes');
 
 dotenv.config();
 const app = express();
@@ -40,7 +41,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/branches', branchRoutes);
 app.use('/api/v1/orders', orderRoutes);
-
+app.use('/api/v1/products', productRoutes);
 
 // Start the server
 app.listen(PORT, () => {
