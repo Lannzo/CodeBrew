@@ -69,6 +69,175 @@ This project uses PostgreSQL as its database.
     node seed.js
     ```
 
+## Database Schema
+
+The database consists of 16 tables designed to be normalized and scalable. Primary keys for all tables are UUIDs. Foreign keys are used to enforce relational integrity.
+
+---
+
+### Core Management
+
+#### `roles`
+Stores user roles (Admin, Branch Officer, Cashier).
+| Column | Type | Description |
+|---|---|---|
+| `role_id` | UUID | Primary Key |
+| `role_name` | VARCHAR | Unique name of the role (e.g., 'Admin') |
+
+#### `branches`
+Stores information for each physical store location.
+| Column | Type | Description |
+|---|---|---|
+| `branch_id` | UUID | Primary Key |
+| `branch_name`| VARCHAR | Name of the branch |
+| `is_active` | BOOLEAN | Toggles if the branch is operational |
+
+#### `users`
+Manages all user accounts, credentials, and links.
+| Column | Type | Description |
+|---|---|---|
+| `user_id` | UUID | Primary Key |
+| `username` | VARCHAR | Unique username for login |
+| `password_hash`| VARCHAR | Hashed password for security |
+| `role_id` | UUID | Foreign Key to `roles.role_id` |
+| `branch_id` | UUID | Foreign Key to `branches.branch_id` |
+| `is_active` | BOOLEAN | Toggles if the user can log in |
+
+---
+
+### Catalogs
+
+#### `products`
+The master catalog of all items available for sale.
+| Column | Type | Description |
+|---|---|---|
+| `product_id` | UUID | Primary Key |
+| `product_name`| VARCHAR | Name of the product (e.g., 'Espresso') |
+| `price` | DECIMAL | Current selling price |
+| `sku` | VARCHAR | Unique Stock Keeping Unit |
+
+#### `assets`
+The master register of all physical company assets.
+| Column | Type | Description |
+|---|---|---|
+| `asset_id` | UUID | Primary Key |
+| `asset_name` | VARCHAR | Name of the asset (e.g., 'La Marzocco Espresso Machine') |
+| `branch_id` | UUID | Foreign Key to `branches.branch_id` where the asset is located |
+| `current_value`| DECIMAL | For depreciation tracking |
+
+---
+
+### Operational & POS
+
+#### `inventory`
+Tracks the current stock quantity of each product at each branch.
+| Column | Type | Description |
+|---|---|---|
+| `inventory_id`| UUID | Primary Key |
+| `product_id` | UUID | Foreign Key to `products.product_id` |
+| `branch_id` | UUID | Foreign Key to `branches.branch_id` |
+| `quantity` | INTEGER | Current stock on hand |
+| `low_stock_threshold`| INTEGER | Threshold for low stock alerts |
+
+#### `orders`
+Stores the header information for each customer sales transaction.
+| Column | Type | Description |
+|---|---|---|
+| `order_id` | UUID | Primary Key |
+| `branch_id` | UUID | Foreign Key to `branches.branch_id` |
+| `user_id` | UUID | Foreign Key to the `users` (cashier) who made the sale |
+| `total_amount`| DECIMAL | Final amount of the transaction |
+| `tax_amount` | DECIMAL | Tax amount applied to the order |
+| `discount_amount`| DECIMAL | Discount amount applied to the order |
+
+#### `order_items`
+Stores the individual line items sold within each order.
+| Column | Type | Description |
+|---|---|---|
+| `order_item_id` | UUID | Primary Key |
+| `order_id` | UUID | Foreign Key to `orders.order_id` |
+| `product_id` | UUID | Foreign Key to `products.product_id` |
+| `quantity` | INTEGER | How many units of the product were sold |
+| `unit_price`| DECIMAL | Price of the product at the time of sale |
+
+#### `payment_methods`
+The master list of accepted payment types.
+| Column | Type | Description |
+|---|---|---|
+| `payment_method_id`| UUID | Primary Key |
+| `method_name`| VARCHAR | Name of the method (e.g., 'Cash', 'Visa') |
+| `is_active` | BOOLEAN | Toggles if this method can be used |
+
+#### `payments`
+Records every payment made against an order, supporting split payments.
+| Column | Type | Description |
+|---|---|---|
+| `payment_id` | UUID | Primary Key |
+| `order_id` | UUID | Foreign Key to `orders.order_id` |
+| `payment_method_id`| UUID | Foreign Key to `payment_methods.payment_method_id` |
+| `amount_paid`| DECIMAL | The amount paid with this specific method |
+
+#### `discounts`
+The master list of all available discount rules and promotions.
+| Column | Type | Description |
+|---|---|---|
+| `discount_id`| UUID | Primary Key |
+| `discount_name`| VARCHAR | Name of the promotion (e.g., 'Student Discount') |
+| `discount_type`| VARCHAR | 'percentage' or 'fixed_amount' |
+| `discount_value`| DECIMAL | The value of the discount |
+| `is_active` | BOOLEAN | Toggles if the discount can be applied |
+
+#### `order_discounts`
+A pivot table linking which `discounts` were applied to which `orders`.
+| Column | Type | Description |
+|---|---|---|
+| `order_id` | UUID | Foreign Key to `orders.order_id` |
+| `discount_id`| UUID | Foreign Key to `discounts.discount_id` |
+
+---
+
+### Auditing & History
+
+#### `maintenance_logs`
+Records the full history of repairs and services for each `asset`.
+| Column | Type | Description |
+|---|---|---|
+| `maintenance_id`| UUID | Primary Key |
+| `asset_id` | UUID | Foreign Key to `assets.asset_id` |
+| `service_date`| DATE | When the service was performed |
+| `service_details`| TEXT | Description of the work done |
+
+#### `inventory_logs`
+A detailed audit trail of every change to inventory levels.
+| Column | Type | Description |
+|---|---|---|
+| `log_id` | UUID | Primary Key |
+| `product_id` | UUID | Foreign Key to `products.product_id` |
+| `branch_id` | UUID | Foreign Key to `branches.branch_id` |
+| `change_quantity`| INTEGER | The change in stock (+ve or -ve) |
+| `reason` | VARCHAR | Reason for the change (e.g., 'sale', 'spoilage') |
+
+#### `stock_transfers`
+Records the details of stock being moved between branches.
+| Column | Type | Description |
+|---|---|---|
+| `transfer_id`| UUID | Primary Key |
+| `from_branch_id`| UUID | Source branch |
+| `to_branch_id` | UUID | Destination branch |
+| `status` | VARCHAR | Status of the transfer (e.g., 'completed') |
+
+---
+
+### Configuration
+
+#### `settings`
+A flexible key-value store for global application settings.
+| Column | Type | Description |
+|---|---|---|
+| `setting_id` | UUID | Primary Key |
+| `setting_key`| VARCHAR | Unique name for the setting (e.g., 'tax_rate') |
+| `setting_value`| JSONB | The value of the setting, stored in flexible JSON format |
+
 ## Environment Variables
 
 This project uses a `.env` file to manage environment variables.
