@@ -15,7 +15,7 @@ exports.login = async (req, res) => {
     try {
         //find the user in the database
         const userQuery = `
-            SELECT u.user_id, u.username, u.password_hash, r.role_name
+            SELECT u.user_id, u.username, u.password_hash, r.role_name, u.branch_id
             FROM users u
             JOIN roles r ON u.role_id = r.role_id
             WHERE u.username = $1 AND u.is_active = TRUE;
@@ -38,11 +38,14 @@ exports.login = async (req, res) => {
         const accessTokenPayload = {
             userId: user.user_id,
             role: user.role_name,
+            branchId: user.branch_id
         };
 
         //refresh token payload
         const refreshTokenPayload = {
             userId: user.user_id,
+            role: user.role_name,
+            branchId: user.branch_id
         };
 
         const accessToken = jwt.sign(accessTokenPayload, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });

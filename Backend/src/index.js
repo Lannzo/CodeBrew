@@ -9,6 +9,7 @@ const db = require('./config/db'); // Import the database configuration
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const branchRoutes = require('./routes/branchRoutes');
+const orderRoutes = require('./routes/orderRoutes');
 
 dotenv.config();
 const app = express();
@@ -38,6 +39,7 @@ app.get('/api/v1', (req, res) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/branches', branchRoutes);
+app.use('/api/v1/orders', orderRoutes);
 
 
 // Start the server
