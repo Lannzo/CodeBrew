@@ -12,6 +12,7 @@ const branchRoutes = require('./routes/branchRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const productRoutes = require('./routes/productRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
+const roleRoutes = require('./routes/roleRoutes');
 
 dotenv.config();
 const app = express();
@@ -44,6 +45,8 @@ app.use('/api/v1/branches', branchRoutes);
 app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/inventory', inventoryRoutes);
+app.use('/api/v1/roles', roleRoutes);
+
 // Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
