@@ -23,9 +23,15 @@ const validateTransfer = [
     body('quantity').isInt({ gt: 0 }).withMessage('Invalid transfer quantity'),
 ];
 
+const validateBranchId = [
+    param('branchId').isUUID().withMessage('Invalid branch ID format'),
+];
+
 router.use(authenticateToken, blockCashier);
 
 router.get('/:branchId', validateGetInventory, inventoryController.getInventoryByBranch);
+
+router.get('/alerts/:branchId', validateBranchId, inventoryController.getLowStockAlerts);
 
 router.post('/adjust', validateAdjustment, inventoryController.adjustInventory);
 

@@ -192,3 +192,48 @@ exports.transferProducts = async (req, res) => {
     }
 };
 
+//alert low stocks
+exports.getLowStockAlerts = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+    const { branchId } = req.params;
+    const { role } = req.user;
+
+    if (role === 'Branch Officer' && req.user.branchId !== branchId) {
+      return res.status(403).json({ message: 'Access Denied: You can only view alerts for your assigned branch.' });
+    }
+
+    const alertsQuery = `
+      SELECT
+        p.product_id,
+        p.product_name,
+        p.sku,
+        i.quantity,
+        i.low_stock_threshold
+      FROM
+        inventory i
+      JOIN
+        products p ON i.product_id = p.product_id
+      WHERE
+        i.branch_id = $1
+        AND i.quantity <= i.low_stock_threshold
+      ORDER BY
+        p.product_name ASC;
+    `;
+    
+    const { rows } = await db.query(alertsQuery, [branchId]);
+
+    
+    res.status(200).json(rows);
+
+  } catch (error) {
+    console.error('Error fetching low stock alerts:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+
+};
+
