@@ -14,6 +14,7 @@ const productRoutes = require('./routes/productRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
 const roleRoutes = require('./routes/roleRoutes');
 const assetRoutes = require('./routes/assetRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 dotenv.config();
 const app = express();
@@ -48,6 +49,8 @@ app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/inventory', inventoryRoutes);
 app.use('/api/v1/roles', roleRoutes);
 app.use('/api/v1/assets', assetRoutes);
+app.use('/api/v1/reports', reportRoutes);
+
 
 // Start the server
 app.listen(PORT, () => {
